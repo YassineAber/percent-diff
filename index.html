@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Percent Diff</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="% Diff">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EEF2F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1417" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --ink:#14212A; --muted:#5B6B73; --line:#D5DEE1;
+  --accent:#0B6E79; --accent-soft:#DCEEF0; --on-accent:#FFFFFF;
+  --good:#1D7F47; --good-soft:#DDF1E5; --bad:#B9381F; --bad-soft:#F8E1DB;
+  --sans:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0D1417; --surface:#162126; --ink:#E4EDEF; --muted:#8FA2A9; --line:#26363C;
+    --accent:#4FC0CC; --accent-soft:#16343A; --on-accent:#08272B;
+    --good:#5CCB8A; --good-soft:#153326; --bad:#F08A73; --bad-soft:#3A1E18;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0D1417; --surface:#162126; --ink:#E4EDEF; --muted:#8FA2A9; --line:#26363C;
+  --accent:#4FC0CC; --accent-soft:#16343A; --on-accent:#08272B;
+  --good:#5CCB8A; --good-soft:#153326; --bad:#F08A73; --bad-soft:#3A1E18;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--ground)}
+body{margin:0;min-height:100%;padding-top:calc(20px + env(safe-area-inset-top,0px))!important;padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))!important;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;padding-inline:16px;-webkit-tap-highlight-color:transparent}
+main{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* Result */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.result-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.big{font-family:var(--mono);font-weight:600;font-size:clamp(44px,15vw,64px);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.big.empty{color:var(--muted)}
+.formula{font-family:var(--mono);font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--line);padding-top:12px;margin-top:2px}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat b{font-family:var(--mono);font-weight:500;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* Inputs */
+.inputs{display:flex;flex-direction:column;gap:10px}
+.field{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px 8px;display:flex;flex-direction:column;gap:2px}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.field label{display:flex;justify-content:space-between}
+.field input{border:0;background:transparent;color:var(--ink);font-family:var(--mono);font-size:28px;font-weight:500;padding:2px 0;width:100%;outline:none;font-variant-numeric:tabular-nums}
+.field input::placeholder{color:var(--line)}
+.swap-row{display:flex;justify-content:center;margin-block:-4px}
+.btn{font-family:var(--sans);font-size:14px;font-weight:600;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 16px;cursor:pointer}
+.btn:focus-visible,.seg button:focus-visible,.chips button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:active{transform:scale(.97)}
+
+/* Controls */
+.group{display:flex;flex-direction:column;gap:8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;border-radius:9px;background:transparent;color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:600;padding:10px 6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.hint{font-size:13px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font-family:var(--mono);font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer;font-variant-numeric:tabular-nums}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+
+.actions{display:flex;gap:8px}
+.actions .btn{flex:1}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+/* History */
+.history{display:flex;flex-direction:column;gap:8px}
+.history ul{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.history li{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;border-top:1px solid var(--line);cursor:pointer}
+.history li:first-child{border-top:0}
+.history li span:first-child{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history li span:last-child{font-weight:600;white-space:nowrap}
+.history-head{display:flex;justify-content:space-between;align-items:center}
+.linkbtn{border:0;background:none;color:var(--accent);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;padding:4px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--ground);font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}.btn:active{transform:none}}
+</style>
+</head>
+<body>
+<main>
+  <section class="result" aria-live="polite">
+    <div class="result-top">
+      <span class="label" id="resultLabel">Difference vs reference</span>
+      <span class="pill" id="status">—</span>
+    </div>
+    <div class="big" id="big">—</div>
+    <div class="formula" id="formula"></div>
+    <div class="stats">
+      <div class="stat"><span class="label">A − B</span><b id="absDiff">—</b></div>
+      <div class="stat"><span class="label">A / B</span><b id="ratio">—</b></div>
+    </div>
+  </section>
+
+  <section class="inputs">
+    <div class="field">
+      <label class="label" for="a"><span id="aName">A · Measured</span></label>
+      <input id="a" type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="2.04">
+    </div>
+    <div class="swap-row"><button class="btn" id="swap" type="button" aria-label="Swap A and B">⇅ Swap</button></div>
+    <div class="field">
+      <label class="label" for="b"><span id="bName">B · Reference</span></label>
+      <input id="b" type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="2.00">
+    </div>
+  </section>
+
+  <section class="group">
+    <span class="label">Method</span>
+    <div class="seg" role="group" aria-label="Method">
+      <button type="button" id="modeRef" aria-pressed="true">vs reference</button>
+      <button type="button" id="modeSym" aria-pressed="false">Symmetric</button>
+    </div>
+    <p class="hint" id="modeHint"></p>
+  </section>
+
+  <section class="group">
+    <span class="label">Tolerance (±)</span>
+    <div class="chips" id="tolChips" role="group" aria-label="Tolerance">
+      <button type="button" data-tol="1">1%</button>
+      <button type="button" data-tol="2">2%</button>
+      <button type="button" data-tol="3">3%</button>
+      <button type="button" data-tol="5">5%</button>
+      <button type="button" data-tol="0">Off</button>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="btn" id="clear" type="button">Clear</button>
+    <button class="btn" id="copy" type="button">Copy</button>
+    <button class="btn primary" id="save" type="button">Save</button>
+  </div>
+
+  <section class="history" id="historyWrap" hidden>
+    <div class="history-head">
+      <span class="label">Saved</span>
+      <button class="linkbtn" id="clearHist" type="button">Clear list</button>
+    </div>
+    <ul id="history"></ul>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+  let mode = store.get('pd-mode', 'ref');
+  let tol = store.get('pd-tol', 3);
+  let hist = store.get('pd-hist', []);
+  let last = null;
+
+  const parse = s => {
+    s = String(s).trim().replace(/\s/g,'').replace(',', '.');
+    if (s === '' || s === '-' || s === '.') return NaN;
+    return /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(s) ? parseFloat(s) : NaN;
+  };
+  const fmt = (x, d) => {
+    if (!isFinite(x)) return '—';
+    const a = Math.abs(x);
+    if (a !== 0 && (a >= 1e7 || a < 1e-4)) return x.toExponential(3);
+    return Number(x.toFixed(d)).toLocaleString('en-US', {maximumFractionDigits:d});
+  };
+  const sig = x => (x > 0 ? '+' : x < 0 ? '−' : '') + fmt(Math.abs(x), 2) + '%';
+
+  function render(){
+    $('modeRef').setAttribute('aria-pressed', mode === 'ref');
+    $('modeSym').setAttribute('aria-pressed', mode === 'sym');
+    document.querySelectorAll('#tolChips button').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.tol) === tol));
+    $('aName').textContent = mode === 'ref' ? 'A · Measured' : 'A · Value 1';
+    $('bName').textContent = mode === 'ref' ? 'B · Reference' : 'B · Value 2';
+    $('resultLabel').textContent = mode === 'ref' ? 'Difference vs reference' : 'Symmetric % difference';
+    $('modeHint').textContent = mode === 'ref'
+      ? 'Use when B is the expected value (e.g. TPS vs measured). Sign shows whether A is above or below B.'
+      : 'Use when neither value is the reference. Divides by the average of A and B; always positive.';
+
+    const a = parse($('a').value), b = parse($('b').value);
+    const big = $('big'), st = $('status');
+    let pct = NaN, formula = '';
+    if (isFinite(a) && isFinite(b)) {
+      if (mode === 'ref') {
+        if (b !== 0) pct = (a - b) / Math.abs(b) * 100;
+        formula = '(A − B) / |B| × 100';
+      } else {
+        const m = (Math.abs(a) + Math.abs(b)) / 2;
+        if (m !== 0) pct = Math.abs(a - b) / m * 100;
+        formula = '|A − B| / ((|A| + |B|) / 2) × 100';
+      }
+    }
+    $('absDiff').textContent = (isFinite(a) && isFinite(b)) ? fmt(a - b, 4) : '—';
+    $('ratio').textContent = (isFinite(a) && isFinite(b) && b !== 0) ? fmt(a / b, 4) : '—';
+
+    if (isFinite(pct)) {
+      big.textContent = mode === 'ref' ? sig(pct) : fmt(pct, 2) + '%';
+      big.classList.remove('empty');
+      $('formula').textContent = formula;
+      if (tol > 0) {
+        const ok = Math.abs(pct) <= tol + 1e-12;
+        st.textContent = ok ? 'Within ±' + tol + '%' : 'Outside ±' + tol + '%';
+        st.className = 'pill ' + (ok ? 'good' : 'bad');
+      } else { st.textContent = 'No tolerance'; st.className = 'pill'; }
+      last = {a, b, pct, mode};
+    } else {
+      big.textContent = '—';
+      big.classList.add('empty');
+      let msg = 'Enter two numbers';
+      if (isFinite(a) && isFinite(b)) msg = mode === 'ref' ? 'Reference B can’t be 0' : 'Both values are 0';
+      else if ($('a').value.trim() && isNaN(a) || $('b').value.trim() && isNaN(b)) msg = 'Check the number format';
+      $('formula').textContent = msg;
+      st.textContent = '—'; st.className = 'pill';
+      last = null;
+    }
+    renderHist();
+  }
+
+  function renderHist(){
+    $('historyWrap').hidden = hist.length === 0;
+    const ul = $('history'); ul.innerHTML = '';
+    hist.forEach(h => {
+      const li = document.createElement('li');
+      li.tabIndex = 0;
+      const l = document.createElement('span');
+      l.textContent = fmt(h.a, 6) + (h.mode === 'ref' ? ' vs ' : ' ↔ ') + fmt(h.b, 6);
+      const r = document.createElement('span');
+      r.textContent = h.mode === 'ref' ? sig(h.pct) : fmt(h.pct, 2) + '%';
+      li.append(l, r);
+      const load = () => { $('a').value = h.a; $('b').value = h.b; mode = h.mode; store.set('pd-mode', mode); render(); };
+      li.addEventListener('click', load);
+      li.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+      ul.appendChild(li);
+    });
+  }
+
+  let tt;
+  function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 1400); }
+
+  $('a').addEventListener('input', render);
+  $('b').addEventListener('input', render);
+  $('a').addEventListener('keydown', e => { if (e.key === 'Enter') $('b').focus(); });
+  $('b').addEventListener('keydown', e => { if (e.key === 'Enter') $('b').blur(); });
+  $('swap').addEventListener('click', () => { const t = $('a').value; $('a').value = $('b').value; $('b').value = t; render(); });
+  $('modeRef').addEventListener('click', () => { mode = 'ref'; store.set('pd-mode', mode); render(); });
+  $('modeSym').addEventListener('click', () => { mode = 'sym'; store.set('pd-mode', mode); render(); });
+  document.querySelectorAll('#tolChips button').forEach(b => b.addEventListener('click', () => { tol = Number(b.dataset.tol); store.set('pd-tol', tol); render(); }));
+  $('clear').addEventListener('click', () => { $('a').value = ''; $('b').value = ''; render(); $('a').focus(); });
+  $('save').addEventListener('click', () => {
+    if (!last) { toast('Enter two numbers first'); return; }
+    hist.unshift(last); hist = hist.slice(0, 8); store.set('pd-hist', hist); renderHist(); toast('Saved');
+  });
+  $('clearHist').addEventListener('click', () => { hist = []; store.set('pd-hist', hist); renderHist(); });
+  $('copy').addEventListener('click', () => {
+    if (!last) { toast('Nothing to copy'); return; }
+    const txt = $('big').textContent.replace('−', '-');
+    try {
+      navigator.clipboard.writeText(txt).then(() => toast('Copied ' + txt), () => toast(txt));
+    } catch(e) { toast(txt); }
+  });
+  render();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
